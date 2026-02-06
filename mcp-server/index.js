@@ -98,6 +98,18 @@ wss.on('connection', (ws) => {
       if (msg.type === 'HANDSHAKE') {
         console.error(`[WS] 🤝 握手成功: ${msg.client}`);
       }
+
+      // 处理全量初始化同步
+      if (msg.type === 'INITIAL_STATE_SYNC') {
+        console.error(`[STATE] 📥 收到全量初始化，正在重置本地状态机...`);
+        localDesignState.layers = msg.payload.layers.map((layer) => ({
+          id: layer.id,
+          type: layer.type,
+          ...layer.style, // 展平 style 属性到根级，方便 Agent 读取
+        }));
+        localDesignState.background = msg.payload.background;
+        console.error(`[STATE] ✅ 初始化完成: ${localDesignState.layers.length} 个图层`);
+      }
     } catch (e) {
       console.error('[WS] ❌ 处理消息失败:', e.message);
     }

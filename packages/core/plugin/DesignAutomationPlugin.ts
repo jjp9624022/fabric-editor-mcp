@@ -208,82 +208,36 @@ export default class DesignAutomationPlugin implements IPluginTempl {
       (window as any)._automation_ws = this.ws;
 
       this.ws.onopen = () => {
-        console.log('%c[Automation] ✅ 双向同步已就绪', 'color: #27ae60; font-weight: bold;');
+        console.log('%c[Automation] ✅ 实时双向同步已就绪', 'color: #27ae60; font-weight: bold;');
         this.ws?.send(JSON.stringify({ type: 'HANDSHAKE', client: 'BROWSER_EDITOR' }));
-      };
 
-      this.ws.onmessage = async (event) => {
-        try {
-          const dataStr = typeof event.data === 'string' ? event.data : String(event.data);
-          const data = JSON.parse(dataStr);
-
-          if (data.type === 'HEARTBEAT') return;
-
-          if (data.type === 'REQUEST') {
-            await this._handleDataRequest(data.tool, data.args, data.requestId);
-            return;
-          }
-
-          const { tool, args } = data;
-          if (!tool) return;
-
-          this.isProcessingRemote = true;
-          console.log(
-            `%c[Automation] 📥 执行远程同步: ${tool}`,
-            'background: #2c3e50; color: #ecf0f1; padding: 2px 5px;',
-            args
-          );
-
-          switch (tool) {
-            case 'create_node':
-              this.createNode(args.type, args.props);
-              break;
-            case 'update_node':
-              this.updateNodeProps(args.id, args.props);
-              break;
-            case 'delete_node':
-              this.deleteNode(args.id);
-              break;
-            case 'clear_canvas':
-              this.editor.clear();
-              break;
-            case 'set_background_color':
-              if (typeof this.editor.setWorkspaseBg === 'function')
-                this.editor.setWorkspaseBg(args.color);
-              break;
-            case 'position':
-              {
-                const centerPlugin = this.editor.getPlugin('CenterAlignPlugin');
-                if (centerPlugin && typeof centerPlugin.position === 'function')
-                  centerPlugin.position(args.type);
-              }
-              break;
-            case 'apply_theme':
-              this.applyTheme(args.colors);
-              break;
-            case 'set_design_tokens':
-              this.setDesignTokens(args.tokens);
-              break;
-            default:
-              break;
-          }
-          this.canvas.requestRenderAll();
-        } catch (e) {
-          console.error('[Automation] 同步执行失败', e);
-        } finally {
-          setTimeout(() => {
-            this.isProcessingRemote = false;
-          }, 50);
-        }
-      };
-
-      this.ws.onclose = () => {
-        console.log('%c[Automation] 🔌 连接已断开，正在重试...', 'color: #e74c3c;');
-        setTimeout(connect, 5000);
+        // 连接成功后立即发送一次全量初始化同步
+        this._reportInitialState();
       };
     };
 
     connect();
+  }
+
+  /**
+   * 上报当前画布的全量状态
+   */
+  private _reportInitialState() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    console.log('%c[Automation] 🛰️ 执行全量初始化同步...', 'color: #3498db;');
+    const schema = this.getDesignSchema();
+    this.ws.send(
+      JSON.stringify({
+        type: 'INITIAL_STATE_SYNC',
+        payload: {
+          layers: schema.layers,
+          background: this.editor.getWorkspase
+            ? (this.editor.getWorkspase() as any).fill
+            : '#ffffff',
+        },
+      })
+    );
   }
 
   private async _handleDataRequest(tool: string, args: any, requestId: string) {
