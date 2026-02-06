@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "vue-fabric-editor-mcp": {
+      "type": "local",
+      "command": ["node", "G:\\tools\\vue-fabric-editor\\mcp-server\\index.js"],
+      "enabled": true
+    }
+  }
+}

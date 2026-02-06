@@ -43,22 +43,26 @@ function updateLocalState(msg) {
       }
       break;
     }
-    case 'delete_node':
+    case 'delete_node': {
       localDesignState.layers = localDesignState.layers.filter((l) => l.id !== args.id);
       console.error(`[STATE] 🗑️ 删除节点: ${args.id}`);
       break;
-    case 'clear_canvas':
+    }
+    case 'clear_canvas': {
       localDesignState.layers = [];
       console.error(`[STATE] 🧹 画布已清空`);
       break;
-    case 'set_background_color':
+    }
+    case 'set_background_color': {
       localDesignState.background = args.color;
       console.error(`[STATE] 🎨 背景色已更新: ${args.color}`);
       break;
-    case 'set_design_tokens':
+    }
+    case 'set_design_tokens': {
       Object.assign(localDesignState.tokens, args.tokens);
       console.error(`[STATE] 💎 Tokens 已更新`);
       break;
+    }
     default:
       break;
   }

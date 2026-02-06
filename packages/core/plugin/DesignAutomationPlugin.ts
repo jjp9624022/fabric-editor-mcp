@@ -1,7 +1,7 @@
 /*
  * @Author: Antigravity Automation
  * @Date: 2026-02-06
- * @Description: 自动化设计插件 - 全双向实时同步引擎 (无影子浏览器模式)
+ * @Description: 自动化设计插件 - 全方位双向实时同步引擎
  */
 
 import { fabric } from 'fabric';
@@ -32,43 +32,117 @@ export default class DesignAutomationPlugin implements IPluginTempl {
   constructor(public canvas: fabric.Canvas, public editor: IEditor) {
     this._initLiveSync();
     this._initManualReporting();
+    this._hookEditorMethods();
   }
 
   /**
-   * 初始化手动操作上报
+   * 劫持编辑器核心方法，确保任何变更（如颜色、字体修改）都能触发上报
+   */
+  private _hookEditorMethods() {
+    if (typeof this.editor.saveState === 'function') {
+      const originalSaveState = this.editor.saveState.bind(this.editor);
+      this.editor.saveState = () => {
+        originalSaveState();
+        // 只要触发了 saveState，就说明有意义的变更发生了
+        const activeObject = this.canvas.getActiveObject();
+        if (activeObject) {
+          if (activeObject.type === 'activeSelection') {
+            (activeObject as fabric.ActiveSelection).getObjects().forEach((obj) => {
+              this._reportManualChange(obj);
+            });
+          } else {
+            this._reportManualChange(activeObject);
+          }
+        }
+      };
+    }
+  }
+
+  /**
+   * 获取物体的全量属性快照
+   */
+  private _getObjectProps(obj: fabric.Object) {
+    const props: any = {
+      left: Math.round(obj.left || 0),
+      top: Math.round(obj.top || 0),
+      scaleX: obj.scaleX,
+      scaleY: obj.scaleY,
+      angle: obj.angle,
+      fill: obj.fill,
+      stroke: obj.stroke,
+      strokeWidth: obj.strokeWidth,
+      opacity: obj.opacity,
+      visible: obj.visible,
+    };
+
+    // 文本特有属性
+    if (obj.type && obj.type.includes('text')) {
+      Object.assign(props, {
+        text: (obj as any).text,
+        fontSize: (obj as any).fontSize,
+        fontWeight: (obj as any).fontWeight,
+        fontFamily: (obj as any).fontFamily,
+        textAlign: (obj as any).textAlign,
+        lineHeight: (obj as any).lineHeight,
+        charSpacing: (obj as any).charSpacing,
+      });
+    }
+
+    // 几何图形特有属性
+    if (obj.type === 'circle') props.radius = (obj as any).radius;
+    if (obj.type === 'rect') {
+      props.rx = (obj as any).rx;
+      props.ry = (obj as any).ry;
+    }
+
+    // 阴影
+    if (obj.shadow && typeof obj.shadow === 'object') {
+      const s = obj.shadow as fabric.Shadow;
+      props.shadow = {
+        color: s.color,
+        blur: s.blur,
+        offsetX: s.offsetX,
+        offsetY: s.offsetY,
+      };
+    }
+
+    return props;
+  }
+
+  /**
+   * 执行手动变更上报
+   */
+  private _reportManualChange(obj: fabric.Object) {
+    if (this.isProcessingRemote || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!obj || (obj as any).id === 'workspace') return;
+
+    console.log('%c[Automation] 🛰️ 上报属性变更:', 'color: #8e44ad;', (obj as any).id);
+    this.ws.send(
+      JSON.stringify({
+        tool: 'update_node',
+        args: {
+          id: (obj as any).id,
+          props: this._getObjectProps(obj),
+        },
+        source: 'MANUAL_UI',
+      })
+    );
+  }
+
+  /**
+   * 初始化手动操作上报事件监听
    */
   private _initManualReporting() {
     this._removeListeners();
 
     this.attachedHandlers.reportChange = (e: any) => {
-      if (this.isProcessingRemote || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-      const obj = e.target;
-      if (!obj || obj.id === 'workspace') return;
-
-      console.log('%c[Automation] 🛰️ 上报手动修改:', 'color: #8e44ad;', obj.id);
-      this.ws.send(
-        JSON.stringify({
-          tool: 'update_node',
-          args: {
-            id: obj.id,
-            props: {
-              left: Math.round(obj.left),
-              top: Math.round(obj.top),
-              scaleX: obj.scaleX,
-              scaleY: obj.scaleY,
-              angle: obj.angle,
-              fill: obj.fill,
-            },
-          },
-          source: 'MANUAL_UI',
-        })
-      );
+      this._reportManualChange(e.target);
     };
 
     this.attachedHandlers.reportAdded = (e: any) => {
       if (this.isProcessingRemote || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       const obj = e.target;
-      if (!obj || obj.id === 'workspace' || (obj as any)._automation_ignore) return;
+      if (!obj || (obj as any).id === 'workspace' || (obj as any)._automation_ignore) return;
 
       if (!(obj as any).id) (obj as any).id = uuid();
 
@@ -78,13 +152,7 @@ export default class DesignAutomationPlugin implements IPluginTempl {
           tool: 'create_node',
           args: {
             type: obj.type,
-            props: {
-              id: (obj as any).id,
-              left: Math.round(obj.left || 0),
-              top: Math.round(obj.top || 0),
-              fill: obj.fill,
-              text: (obj as any).text || '',
-            },
+            props: Object.assign({ id: (obj as any).id }, this._getObjectProps(obj)),
           },
           source: 'MANUAL_UI',
         })
@@ -106,9 +174,12 @@ export default class DesignAutomationPlugin implements IPluginTempl {
       }
     };
 
+    // 基础变更事件
     this.canvas.on('object:modified', this.attachedHandlers.reportChange);
     this.canvas.on('object:added', this.attachedHandlers.reportAdded);
     this.canvas.on('object:removed', this.attachedHandlers.reportRemoved);
+    // 文本输入实时变更
+    this.canvas.on('text:changed', this.attachedHandlers.reportChange);
   }
 
   private _removeListeners() {
@@ -118,26 +189,26 @@ export default class DesignAutomationPlugin implements IPluginTempl {
       this.canvas.off('object:added', this.attachedHandlers.reportAdded);
     if (this.attachedHandlers.reportRemoved)
       this.canvas.off('object:removed', this.attachedHandlers.reportRemoved);
+    this.canvas.off('text:changed', this.attachedHandlers.reportChange);
   }
 
   private _initLiveSync() {
     if (typeof window === 'undefined') return;
 
-    // 确保单例连接
     if ((window as any)._automation_ws) {
       (window as any)._automation_ws.close();
     }
 
     const connect = () => {
       console.log(
-        '%c[Automation] 🚀 正在尝试连接 MCP 同步服务器 (ws://localhost:8082)...',
+        '%c[Automation] 🚀 正在连接同步服务器 (ws://localhost:8082)...',
         'color: #3498db; font-weight: bold;'
       );
       this.ws = new WebSocket('ws://localhost:8082');
       (window as any)._automation_ws = this.ws;
 
       this.ws.onopen = () => {
-        console.log('%c[Automation] ✅ 实时双向同步已就绪', 'color: #27ae60; font-weight: bold;');
+        console.log('%c[Automation] ✅ 双向同步已就绪', 'color: #27ae60; font-weight: bold;');
         this.ws?.send(JSON.stringify({ type: 'HANDSHAKE', client: 'BROWSER_EDITOR' }));
       };
 
@@ -293,7 +364,7 @@ export default class DesignAutomationPlugin implements IPluginTempl {
         id: (o as any).id,
         text: (o as any).text || '',
         position: { x: Math.round(o.left!), y: Math.round(o.top!) },
-        style: { fill: o.fill },
+        style: this._getObjectProps(o),
       })),
     };
   }
@@ -326,6 +397,7 @@ export default class DesignAutomationPlugin implements IPluginTempl {
           top: obj.top,
           width: obj.getScaledWidth(),
           height: obj.getScaledHeight(),
+          props: this._getObjectProps(obj),
         }
       : null;
   }
