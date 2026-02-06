@@ -27,3 +27,13 @@ yarn.lock
 package-lock.json
 typings/auto-imports.d.ts
 .eslintrc-auto-import.json
+
+# MCP Automation
+mcp-server/node_modules
+mcp-server/*.log
+mcp-server/*.png
+mcp-server/*.js
+!mcp-server/index.js
+dev-server.log
+mcp-server.log
+

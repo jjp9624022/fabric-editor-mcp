@@ -45,6 +45,7 @@ import CustomRect from './objects/CustomRect';
 import CustomTextbox from './objects/CustomTextbox';
 // import { extend } from 'dayjs';
 
+export { default as DesignAutomationPlugin } from './plugin/DesignAutomationPlugin';
 export { EventType, Utils, CustomRect, CustomTextbox };
 export default Editor;
 

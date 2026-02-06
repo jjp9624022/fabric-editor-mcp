@@ -73,6 +73,7 @@ import Editor, {
   LockPlugin,
   AddBaseTypePlugin,
   MaskPlugin,
+  DesignAutomationPlugin,
 } from '@kuaitu/core';
 
 const APIHOST = import.meta.env.APP_APIHOST;
@@ -135,7 +136,8 @@ onMounted(() => {
     .use(ResizePlugin)
     .use(LockPlugin)
     .use(AddBaseTypePlugin)
-    .use(MaskPlugin);
+    .use(MaskPlugin)
+    .use(DesignAutomationPlugin);
 
   state.show = true;
   // 默认打开标尺
