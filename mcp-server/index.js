@@ -88,10 +88,9 @@ wss.on('connection', (ws) => {
     try {
       const msg = JSON.parse(data);
 
-      // 处理来自浏览器的实时变更上报
-      if (msg.source === 'MANUAL_UI') {
+      // 处理来自浏览器的上报或测试脚本的指令
+      if (msg.source === 'MANUAL_UI' || msg.source === 'AI') {
         updateLocalState(msg);
-        // 将此变更转发给其他可能打开的浏览器标签页
         broadcastAction(msg, ws);
       }
 
@@ -105,7 +104,7 @@ wss.on('connection', (ws) => {
         localDesignState.layers = msg.payload.layers.map((layer) => ({
           id: layer.id,
           type: layer.type,
-          ...layer.style, // 展平 style 属性到根级，方便 Agent 读取
+          ...layer.style,
         }));
         localDesignState.background = msg.payload.background;
         console.error(`[STATE] ✅ 初始化完成: ${localDesignState.layers.length} 个图层`);
@@ -189,7 +188,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'update_node':
       case 'clear_canvas':
       case 'apply_theme': {
-        updateLocalState({ tool: name, args });
+        updateLocalState({ tool: name, args, source: 'AI' });
         broadcastAction({ tool: name, args });
         return { content: [{ type: 'text', text: `已执行并同步: ${name}` }] };
       }
@@ -204,7 +203,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Vue Fabric Editor Local-State MCP v6.0 Ready (Shadowless)');
+  console.error('Vue Fabric Editor Local-State MCP v6.1 Ready (Robust Sync)');
 }
 
 main().catch(console.error);
