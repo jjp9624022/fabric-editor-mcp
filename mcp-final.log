@@ -1,0 +1,9 @@
+Vue Fabric Editor Local-State MCP v6.1 Ready (Robust Sync)
+[WS] 🛰️ 浏览器已连接，实时状态同步开启
+[STATE] 📥 收到变更 (AI): create_node
+[STATE] ✨ 新增节点: test-sync-box (rect)
+[STATE] 📥 收到变更 (MANUAL_UI): update_node
+[STATE] 📝 更新节点: test-sync-box
+[STATE] 📥 收到变更 (MANUAL_UI): create_node
+[STATE] ✨ 新增节点: manual-circle-001 (circle)
+[WS] 🔌 浏览器连接断开

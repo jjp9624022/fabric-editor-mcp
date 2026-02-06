@@ -201,10 +201,10 @@ export default class DesignAutomationPlugin implements IPluginTempl {
 
     const connect = () => {
       console.log(
-        '%c[Automation] 🚀 正在尝试连接 MCP 同步服务器 (ws://localhost:8999)...',
+        '%c[Automation] 🚀 正在尝试连接 MCP 同步服务器 (ws://localhost:8082)...',
         'color: #3498db; font-weight: bold;'
       );
-      this.ws = new WebSocket('ws://localhost:8999');
+      this.ws = new WebSocket('ws://localhost:8082');
       (window as any)._automation_ws = this.ws;
 
       this.ws.onopen = () => {

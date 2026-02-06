@@ -140,6 +140,10 @@ onMounted(() => {
     .use(DesignAutomationPlugin);
 
   state.show = true;
+  // 暴露给全局，方便 MCP 等自动化工具调用
+  window.canvasEditor = canvasEditor;
+  window.fabric = fabric;
+
   // 默认打开标尺
   if (state.ruler) {
     canvasEditor.rulerEnable();

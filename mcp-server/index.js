@@ -34,12 +34,15 @@ function updateLocalState(msg) {
       break;
     }
     case 'update_node': {
-      const layer = localDesignState.layers.find((l) => l.id === args.id);
+      let layer = localDesignState.layers.find((l) => l.id === args.id);
       if (layer) {
         Object.assign(layer, args.props);
         console.error(`[STATE] 📝 更新节点: ${args.id}`);
       } else {
-        console.error(`[STATE] ⚠️ 尝试更新不存在的节点: ${args.id}`);
+        // 如果节点不存在，则视作延迟创建（Upsert）
+        console.error(`[STATE] ℹ️ 节点不存在，执行自动创建: ${args.id}`);
+        const newNode = { id: args.id, ...args.props };
+        localDesignState.layers.push(newNode);
       }
       break;
     }

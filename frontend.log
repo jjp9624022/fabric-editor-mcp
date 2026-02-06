@@ -1,0 +1,72 @@
+
+> view-ui-project-ts@1.0.0 dev G:\tools\vue-fabric-editor
+> vite serve "--port" "3010"
+
+
+  [32m[1mVITE[22m v4.2.1[39m  [2mready in [0m[1m1182[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3010[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+
+ WARN  DeprecationWarning: 'originalKeywordKind' has been deprecated since v5.0.0 and will no longer be usable after v5.2.0. Use 'identifierToKeywordKind(identifier)' instead.
+
+
+ WARN  [2m20:31:52[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\tools.vue
+  215:7  warning  'drawPathText' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/tools.vue[39m
+
+
+ WARN  [2m20:31:52[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\tools.vue
+  215:7  warning  'drawPathText' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/tools.vue?vue&type=style&index=0&scoped=dfb6a0fc&lang.less[39m
+
+
+ WARN  [2m20:31:55[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\common\typeList.vue
+  35:7  warning  'baseURL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/common/typeList.vue[39m
+
+
+ WARN  [2m20:31:55[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\common\typeList.vue
+  35:7  warning  'baseURL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/common/typeList.vue?vue&type=style&index=0&scoped=81870a9e&lang.less[39m
+
+
+ WARN  [2m20:31:55[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\color-picker\index.vue
+  162:5  warning  'backendHex' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/color-picker/index.vue[39m
+
+
+ WARN  [2m20:31:55[22m [33m[1m[vite][22m[39m [33mwarning: 
+G:\tools\vue-fabric-editor\src\components\color-picker\index.vue
+  162:5  warning  'backendHex' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+[39m
+  Plugin: [35mvite-plugin-eslint[39m
+  File: [36mG:/tools/vue-fabric-editor/src/components/color-picker/index.vue?vue&type=style&index=0&scoped=3b38e153&lang.less[39m
+
