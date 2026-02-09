@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
+    "playwright": "^1.58.1",
     "uuid": "^9.0.0",
     "ws": "^8.13.0"
   }

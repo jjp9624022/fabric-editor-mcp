@@ -20,6 +20,7 @@ export default class DesignAutomationPlugin implements IPluginTempl {
     'createNode',
     'deleteNode',
     'getScreenshot',
+    'saveToCloud',
   ];
 
   private ws: WebSocket | null = null;
@@ -30,9 +31,24 @@ export default class DesignAutomationPlugin implements IPluginTempl {
   private attachedHandlers: Record<string, any> = {};
 
   constructor(public canvas: fabric.Canvas, public editor: IEditor) {
-    this._initLiveSync();
-    this._initManualReporting();
-    this._hookEditorMethods();
+    try {
+      console.log(
+        '%c[Automation] 🎉 DesignAutomationPlugin 构造函数被调用',
+        'color: #3498db; font-weight: bold;'
+      );
+      console.log('[Automation] Canvas 对象:', this.canvas);
+      console.log('[Automation] Editor 对象:', this.editor);
+      this._initLiveSync();
+      this._initManualReporting();
+      this._hookEditorMethods();
+      console.log(
+        '%c[Automation] ✅ DesignAutomationPlugin 初始化完成',
+        'color: #27ae60; font-weight: bold;'
+      );
+    } catch (error) {
+      console.error('%c[Automation] ❌ 初始化失败:', 'color! #e74c3c; font-weight: bold;', error);
+      throw error;
+    }
   }
 
   /**
@@ -107,6 +123,54 @@ export default class DesignAutomationPlugin implements IPluginTempl {
     }
 
     return props;
+  }
+
+  /**
+   * 处理来自 MCP Server 的远程指令
+   */
+  private _handleRemoteCommand(tool: string, args: any) {
+    this.isProcessingRemote = true;
+
+    try {
+      switch (tool) {
+        case 'create_node':
+          this.createNode(args.type, args.props);
+          console.log('%c[Automation] ✅ 执行 create_node', 'color: #27ae60;', args);
+          break;
+        case 'update_node':
+          this.updateNodeProps(args.id, args.props);
+          console.log('%c[Automation] ✅ 执行 update_node', 'color: #27ae60;', args);
+          break;
+        case 'delete_node':
+          this.deleteNode(args.id);
+          console.log('%c[Automation] ✅ 执行 delete_node', 'color: #27ae60;', args.id);
+          break;
+        case 'clear_canvas':
+          this.editor.clear();
+          console.log('%c[Automation] ✅ 执行 clear_canvas', 'color: #27ae60;');
+          break;
+        case 'apply_theme':
+          this.applyTheme(args.colors);
+          console.log('%c[Automation] ✅ 执行 apply_theme', 'color: #27ae60;', args.colors);
+          break;
+        case 'get_screenshot':
+          // 仅用于消除警告，实际逻辑在 _handleDataRequest 中处理
+          break;
+        case 'save_to_cloud':
+          console.log('[Automation] ☁️ Triggering save_to_cloud event...');
+          this.editor.emit('automation:save-to-cloud', args);
+          break;
+        default:
+          console.warn('[Automation] 未知指令:', tool);
+      }
+    } catch (error) {
+      console.error('[Automation] 指令执行失败:', error);
+    } finally {
+      // 延迟重置标志，确保所有事件都完成
+      setTimeout(() => {
+        this.isProcessingRemote = false;
+      }, 100);
+    }
   }
 
   /**
@@ -193,26 +257,70 @@ export default class DesignAutomationPlugin implements IPluginTempl {
   }
 
   private _initLiveSync() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      console.log('[Automation] ⚠️ window 未定义，跳过 WebSocket 初始化');
+      return;
+    }
+
+    console.log('[Automation] 📍 window 类型检测通过，准备初始化 WebSocket');
 
     if ((window as any)._automation_ws) {
+      console.log('[Automation] 🔄 关闭现有 WebSocket 连接');
       (window as any)._automation_ws.close();
     }
 
+    // WebSocket URL 配置优先级：
+    // 1. 运行时通过 window 对象配置
+    // 2. 默认连接到宿主机 localhost:8082（MCP Server 在宿主机运行）
+    const wsUrl =
+      (window as any).__MCP_WS_URL__ || (window as any).MCP_WS_URL || 'ws://localhost:8082';
+
     const connect = () => {
       console.log(
-        '%c[Automation] 🚀 正在尝试连接 MCP 同步服务器 (ws://localhost:8082)...',
+        '%c[Automation] 🚀 正在尝试连接 MCP 同步服务器...',
         'color: #3498db; font-weight: bold;'
       );
-      this.ws = new WebSocket('ws://localhost:8082');
+      console.log(`[Automation] 📍 WebSocket URL: ${wsUrl}`);
+      this.ws = new WebSocket(wsUrl);
       (window as any)._automation_ws = this.ws;
 
       this.ws.onopen = () => {
         console.log('%c[Automation] ✅ 实时双向同步已就绪', 'color: #27ae60; font-weight: bold;');
-        this.ws?.send(JSON.stringify({ type: 'HANDSHAKE', client: 'BROWSER_EDITOR' }));
+        const handshakeMsg = JSON.stringify({ type: 'HANDSHAKE', client: 'BROWSER_EDITOR' });
+        console.log('[Automation] 📤 发送握手消息:', handshakeMsg);
+        this.ws?.send(handshakeMsg);
 
         // 连接成功后立即发送一次全量初始化同步
         this._reportInitialState();
+      };
+
+      this.ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          console.log('[Automation] 📥 收到消息:', msg.type || msg.tool, msg);
+
+          // 处理来自 MCP Server 的远程指令
+          if (msg.tool && msg.args) {
+            console.log('%c[Automation] 📥 收到远程指令:', 'color: #e67e22;', msg.tool, msg.args);
+            this._handleRemoteCommand(msg.tool, msg.args);
+          }
+
+          // 处理数据请求（带 requestId 的）
+          if (msg.tool && msg.requestId) {
+            this._handleDataRequest(msg.tool, msg.args, msg.requestId);
+          }
+        } catch (error) {
+          console.error('[Automation] 消息处理失败:', error);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log('%c[Automation] 🔌 连接断开，3秒后重连...', 'color: #e74c3c;');
+        setTimeout(connect, 3000);
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[Automation] WebSocket 错误:', error);
       };
     };
 
@@ -242,18 +350,31 @@ export default class DesignAutomationPlugin implements IPluginTempl {
 
   private async _handleDataRequest(tool: string, args: any, requestId: string) {
     if (!this.ws) return;
+    console.log(`[Automation] 📸 Processing data request: ${tool} (${requestId})`);
     let result: any = null;
     switch (tool) {
       case 'get_design_schema':
         result = this.getDesignSchema();
         break;
       case 'get_screenshot':
+        console.log('[Automation] 📸 Calling this.getScreenshot()...');
         result = await this.getScreenshot();
+        console.log(`[Automation] 📸 Screenshot result length: ${result ? result.length : 0}`);
+        break;
+      case 'save_to_cloud':
+        console.log('[Automation] ☁️ Triggering save_to_cloud event...');
+        this.editor.emit('automation:save-to-cloud', args);
+        result = { status: 'triggered' };
         break;
       default:
         break;
     }
-    this.ws.send(JSON.stringify({ type: 'RESPONSE', requestId, payload: result }));
+    if (result) {
+      console.log(`[Automation] 📤 Sending RESPONSE for ${requestId}`);
+      this.ws.send(JSON.stringify({ type: 'RESPONSE', requestId, payload: result }));
+    } else {
+      console.warn(`[Automation] ⚠️ No result generated for ${tool} (${requestId})`);
+    }
   }
 
   // --- 核心操作方法 ---

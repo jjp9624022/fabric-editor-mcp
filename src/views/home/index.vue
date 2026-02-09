@@ -78,6 +78,13 @@ import Editor, {
 
 const APIHOST = import.meta.env.APP_APIHOST;
 
+import useMaterial from '@/hooks/useMaterial';
+import { useRoute } from 'vue-router';
+import dayjs from 'dayjs';
+
+const route = useRoute();
+// const { createTmplByCommon, updataTemplInfo } = useMaterial();
+
 // 创建编辑器
 const canvasEditor = new Editor() as IEditor;
 
@@ -143,6 +150,59 @@ onMounted(() => {
   // 暴露给全局，方便 MCP 等自动化工具调用
   window.canvasEditor = canvasEditor;
   window.fabric = fabric;
+
+  // 监听自动化保存事件
+  canvasEditor.on('automation:save-to-cloud', async (args: any) => {
+    console.log('%c[Automation] ☁️ 收到云端保存指令', 'color: #3498db; font-weight: bold;', args);
+    try {
+      // Manual save logic using local canvasEditor instead of hook's injected one
+      const json = canvasEditor.getJson();
+      const base64 = await canvasEditor.preview();
+
+      // Upload
+      const { uploadImg, createdTempl, updataTempl } = await import('@/api/user');
+      const dataURLtoFile = (dataurl: string, filename: string) => {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)![1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+      };
+
+      const file = dataURLtoFile(base64, 'automation.png');
+      const formData = new FormData();
+      formData.append('files', file, `${Date.now()}`);
+      const uploadRes = await uploadImg(formData);
+      const fileInfo = uploadRes.data[0];
+
+      const saveData = {
+        json,
+        img: fileInfo.id,
+        desc: 'AI Generated',
+        name: args.name || dayjs().format('YYYY-MM-DD HH:mm:ss') + ' AI作品',
+      };
+
+      if (route?.query?.id || args.id) {
+        await updataTempl(route?.query?.id || args.id, { data: saveData });
+        console.log('%c[Automation] ✅ 云端保存完成（更新）', 'color: #27ae60;');
+      } else {
+        const res = await createdTempl({
+          data: {
+            ...saveData,
+            type: 'file',
+            parentId: '',
+          },
+        });
+        console.log('%c[Automation] ✅ 云端保存完成（创建）', 'color: #27ae60;', res.data.data.id);
+      }
+    } catch (error) {
+      console.error('[Automation] ❌ 云端保存失败:', error);
+    }
+  });
 
   // 默认打开标尺
   if (state.ruler) {

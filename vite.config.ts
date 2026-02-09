@@ -46,6 +46,7 @@ const config = ({ mode }) => {
         inject: {
           data: {
             title: APP_TITLE,
+            mcpWsUrl: 'PLACEHOLDER_MCP_WS_URL',
           },
         },
       }),
